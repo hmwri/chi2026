@@ -1,0 +1,13 @@
+{
+  "created_at_unix": 1776418963,
+  "dimensions": null,
+  "document_count": 2782,
+  "embedding_dtype": "float32",
+  "embedding_normalized": true,
+  "embedding_shape": [
+    2782,
+    1536
+  ],
+  "model": "text-embedding-3-small",
+  "source_csv": "chi2026_program_all_tracks.csv"
+}
