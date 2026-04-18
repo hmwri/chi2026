@@ -11,14 +11,29 @@ import numpy as np
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from openai import OpenAI
+from starlette.requests import Request
+from starlette.responses import FileResponse, JSONResponse, Response
 
 from search_index import embed_query, load_index, snippet
 
 load_dotenv()
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
-MCP_HOST = os.environ.get("MCP_HOST", "127.0.0.1")
-MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
+APP_HOST = os.environ.get("APP_HOST", os.environ.get("MCP_HOST", "127.0.0.1"))
+APP_PORT = int(os.environ.get("APP_PORT", os.environ.get("MCP_PORT", "8000")))
+APP_BASE_PATH = (
+    os.environ.get("APP_BASE_PATH", os.environ.get("WEB_BASE_PATH", ""))
+    .strip()
+    .rstrip("/")
+)
+MCP_PATH = os.environ.get("MCP_PATH", f"{APP_BASE_PATH}/mcp").strip() or "/mcp"
+STATIC_DIR = Path(os.environ.get("STATIC_DIR", "static"))
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_DIMENSIONS = (
+    int(os.environ["EMBEDDING_DIMENSIONS"])
+    if os.environ.get("EMBEDDING_DIMENSIONS")
+    else None
+)
 MAX_TOP_K = int(os.environ.get("MAX_TOP_K", "50"))
 
 mcp = FastMCP(
@@ -30,9 +45,16 @@ mcp = FastMCP(
     ),
     stateless_http=True,
     json_response=True,
-    host=MCP_HOST,
-    port=MCP_PORT,
+    host=APP_HOST,
+    port=APP_PORT,
+    streamable_http_path=MCP_PATH,
 )
+
+
+def app_path(path: str) -> str:
+    if not path.startswith("/"):
+        path = "/" + path
+    return f"{APP_BASE_PATH}{path}"
 
 
 @lru_cache(maxsize=1)
@@ -76,6 +98,13 @@ def paper_matches_filters(
     return True
 
 
+def normalize_l2(vector: np.ndarray) -> np.ndarray:
+    norm = np.linalg.norm(vector)
+    if norm == 0:
+        return vector
+    return vector / norm
+
+
 def result_from_paper(paper: Dict[str, Any], score: float) -> Dict[str, Any]:
     metadata = paper.get("metadata", {})
     return {
@@ -97,6 +126,69 @@ def result_from_paper(paper: Dict[str, Any], score: float) -> Dict[str, Any]:
         "session_end": metadata.get("session_end"),
         "session_room": metadata.get("session_room"),
     }
+
+
+@mcp.custom_route(app_path("/"), methods=["GET"], include_in_schema=False)
+async def index(_request: Request) -> FileResponse:
+    return FileResponse(STATIC_DIR / "visual_search.html")
+
+
+if APP_BASE_PATH:
+
+    @mcp.custom_route(APP_BASE_PATH, methods=["GET"], include_in_schema=False)
+    async def base_index(_request: Request) -> FileResponse:
+        return FileResponse(STATIC_DIR / "visual_search.html")
+
+
+@mcp.custom_route(app_path("/assets/{path:path}"), methods=["GET"], include_in_schema=False)
+async def assets(request: Request) -> Response:
+    requested = request.path_params["path"]
+    root = (STATIC_DIR / "assets").resolve()
+    target = (root / requested).resolve()
+    if root != target and root not in target.parents:
+        return JSONResponse({"error": "invalid asset path"}, status_code=400)
+    if not target.is_file():
+        return JSONResponse({"error": "asset not found"}, status_code=404)
+    return FileResponse(target)
+
+
+@mcp.custom_route(app_path("/api/health"), methods=["GET"], include_in_schema=False)
+async def health(_request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "ok": True,
+            "embedding_model": EMBEDDING_MODEL,
+            "mcp_path": MCP_PATH,
+        }
+    )
+
+
+@mcp.custom_route(app_path("/api/embed"), methods=["GET"], include_in_schema=False)
+async def embed(request: Request) -> JSONResponse:
+    query = (request.query_params.get("q") or "").strip()
+    if not query:
+        return JSONResponse({"error": "q is required"}, status_code=400)
+
+    kwargs: Dict[str, Any] = {
+        "model": EMBEDDING_MODEL,
+        "input": query,
+        "encoding_format": "float",
+    }
+    if EMBEDDING_DIMENSIONS is not None:
+        kwargs["dimensions"] = EMBEDDING_DIMENSIONS
+
+    response = OpenAI().embeddings.create(**kwargs)
+    embedding = normalize_l2(
+        np.array(response.data[0].embedding, dtype="float32")
+    ).astype("float32")
+    return JSONResponse(
+        {
+            "query": query,
+            "model": EMBEDDING_MODEL,
+            "dimensions": EMBEDDING_DIMENSIONS,
+            "embedding": embedding.tolist(),
+        }
+    )
 
 
 @mcp.tool()

@@ -1,6 +1,7 @@
 # CHI 2026 Search
 
-Local embedding search and MCP server for CHI 2026 program data.
+Local embedding search, visual search UI, and MCP server for CHI 2026 program
+data.
 
 ## Setup
 
@@ -28,17 +29,18 @@ This writes:
 uv run python search_index.py "LLM agents accessibility" --top-k 5
 ```
 
-## MCP Server
+## Unified Server
 
-Start the Streamable HTTP MCP server:
+Start the unified Streamable HTTP MCP server and visual search app:
 
 ```powershell
 uv run python mcp_server.py
 ```
 
-By default it listens on:
+By default it listens on one port:
 
 ```text
+http://127.0.0.1:8000/
 http://127.0.0.1:8000/mcp
 ```
 
@@ -49,8 +51,10 @@ OPENAI_API_KEY=
 EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_DIMENSIONS=
 DATA_DIR=data
-MCP_HOST=127.0.0.1
-MCP_PORT=8000
+APP_HOST=127.0.0.1
+APP_PORT=8000
+APP_BASE_PATH=
+MCP_PATH=/mcp
 ```
 
 Exposed MCP tools:
@@ -69,16 +73,16 @@ Build the 2D projection once after rebuilding embeddings:
 uv run python build_projection.py
 ```
 
-Start the visual search app:
+Start the same unified app:
 
 ```powershell
-uv run python web_search_app.py
+uv run python mcp_server.py
 ```
 
 Default local URL:
 
 ```text
-http://127.0.0.1:8080/
+http://127.0.0.1:8000/
 ```
 
 The app keeps `OPENAI_API_KEY` on the server. The server only relays query
@@ -102,7 +106,7 @@ example.com {
     redir /chi2026 /chi2026/
 
     handle_path /chi2026/* {
-        reverse_proxy 127.0.0.1:8080
+        reverse_proxy 127.0.0.1:8000
     }
 }
 ```
@@ -110,13 +114,22 @@ example.com {
 With this `handle_path` setup, keep:
 
 ```text
-WEB_BASE_PATH=
+APP_BASE_PATH=
+MCP_PATH=/mcp
 ```
 
-If you do not strip the prefix, set `WEB_BASE_PATH` and proxy the path as-is:
+The public MCP URL is:
 
 ```text
-WEB_BASE_PATH=/chi2026
+https://example.com/chi2026/mcp
+```
+
+If you do not strip the prefix, set `APP_BASE_PATH` and `MCP_PATH`, then proxy
+the path as-is:
+
+```text
+APP_BASE_PATH=/chi2026
+MCP_PATH=/chi2026/mcp
 ```
 
 ```caddyfile
@@ -124,7 +137,7 @@ example.com {
     redir /chi2026 /chi2026/
 
     handle /chi2026/* {
-        reverse_proxy 127.0.0.1:8080
+        reverse_proxy 127.0.0.1:8000
     }
 }
 ```
