@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CHI 2026 Visual Search</title>
-  <link rel="stylesheet" href="assets/visual_search.css?v=20260418-rank-order">
+  <link rel="stylesheet" href="assets/visual_search.css?v=20260418-i18n-ui">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -13,7 +13,7 @@
       <header>
         <div>
           <h1>CHI 2026 Visual Search</h1>
-          <p>中心に近い論文ほど内側へ、隣り合う論文ほど互いに近くなるように配置します。</p>
+          <p id="subtitle">中心に近い論文ほど内側へ、隣り合う論文ほど互いに近くなるように配置します。</p>
           <div class="legend">
             <span><span class="dot query-dot"></span>center</span>
             <span><span class="dot paper-dot"></span>similar papers</span>
@@ -22,14 +22,21 @@
         <form id="searchForm">
           <input id="query" name="q" value="ステアリングモデル" autocomplete="off" aria-label="検索語">
           <label class="countControl">
-            <span>表示件数</span>
+            <span id="topKLabel">表示件数</span>
             <input id="topK" name="topK" type="number" min="3" max="30" step="1" value="10" aria-label="表示件数">
           </label>
           <label class="labelControl">
-            <span>グラフ表示</span>
+            <span id="labelModeLabel">グラフ表示</span>
             <select id="labelMode" name="labelMode" aria-label="グラフ表示">
-              <option value="tagline" selected>キャッチコピー</option>
-              <option value="title">タイトル</option>
+              <option id="labelModeTagline" value="tagline" selected>キャッチコピー</option>
+              <option id="labelModeTitle" value="title">タイトル</option>
+            </select>
+          </label>
+          <label class="languageControl">
+            <span id="languageModeLabel">言語</span>
+            <select id="languageMode" name="languageMode" aria-label="表示言語">
+              <option value="ja" selected>日本語</option>
+              <option value="en">English</option>
             </select>
           </label>
           <button id="submit" type="submit">検索</button>
@@ -60,6 +67,6 @@
       <a id="overlayProgram" href="#" target="_blank" rel="noreferrer">CHI program</a>
     </div>
   </div>
-  <script src="assets/visual_search.js?v=20260418-rank-order"></script>
+  <script src="assets/visual_search.js?v=20260418-i18n-ui"></script>
 </body>
 </html>

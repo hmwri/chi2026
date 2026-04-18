@@ -57,7 +57,7 @@ p {
 }
 form {
   display: grid;
-  grid-template-columns: minmax(260px, 440px) 112px 136px 92px;
+  grid-template-columns: minmax(240px, 420px) 112px 136px 104px 92px;
   gap: 8px;
 }
 input, select, button {
@@ -72,12 +72,14 @@ input, select {
   background: #fff;
 }
 .countControl,
-.labelControl {
+.labelControl,
+.languageControl {
   position: relative;
   display: block;
 }
 .countControl span,
-.labelControl span {
+.labelControl span,
+.languageControl span {
   position: absolute;
   top: 4px;
   left: 10px;
@@ -92,7 +94,8 @@ input, select {
   text-align: center;
   font-weight: 700;
 }
-.labelControl select {
+.labelControl select,
+.languageControl select {
   width: 100%;
   padding: 15px 26px 0 10px;
   font-weight: 700;
@@ -372,7 +375,7 @@ li.active {
   }
   #sidePane { border-left: 0; border-top: 1px solid var(--line); }
   header { grid-template-columns: 1fr; }
-  form { grid-template-columns: 1fr 94px 128px 86px; }
+  form { grid-template-columns: 1fr 94px 128px 96px 86px; }
   #mapStage,
   #chart {
     height: min(72vh, 620px);
@@ -381,5 +384,16 @@ li.active {
   .mapControls {
     top: 10px;
     right: 10px;
+  }
+}
+@media (max-width: 680px) {
+  form {
+    grid-template-columns: 1fr 88px;
+  }
+  .countControl,
+  .labelControl,
+  .languageControl,
+  #submit {
+    min-width: 0;
   }
 }

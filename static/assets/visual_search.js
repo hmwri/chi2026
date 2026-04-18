@@ -1,4 +1,5 @@
-const UI_VERSION = "20260418-rank-order";
+const DEFAULT_LANGUAGE = "ja";
+const UI_VERSION = "20260418-i18n-ui";
 
 const state = {
   papers: [],
@@ -14,14 +15,22 @@ const state = {
   dialogPaper: null,
   selectedIndex: null,
   currentMode: "query",
-  labelMode: "tagline"
+  labelMode: "tagline",
+  language: DEFAULT_LANGUAGE
 };
 
 const els = {
   form: document.querySelector("#searchForm"),
+  subtitle: document.querySelector("#subtitle"),
   query: document.querySelector("#query"),
   topK: document.querySelector("#topK"),
+  topKLabel: document.querySelector("#topKLabel"),
   labelMode: document.querySelector("#labelMode"),
+  labelModeLabel: document.querySelector("#labelModeLabel"),
+  labelModeTagline: document.querySelector("#labelModeTagline"),
+  labelModeTitle: document.querySelector("#labelModeTitle"),
+  languageMode: document.querySelector("#languageMode"),
+  languageModeLabel: document.querySelector("#languageModeLabel"),
   button: document.querySelector("#submit"),
   status: document.querySelector("#status"),
   layers: document.querySelector("#layers"),
@@ -38,6 +47,64 @@ const els = {
   overlaySimilar: document.querySelector("#overlaySimilar"),
   overlayProgram: document.querySelector("#overlayProgram")
 };
+
+const I18N = {
+  ja: {
+    subtitle: "中心に近い論文ほど内側へ、隣り合う論文ほど互いに近くなるように配置します。",
+    topK: "表示件数",
+    labelMode: "グラフ表示",
+    tagline: "キャッチコピー",
+    title: "タイトル",
+    language: "言語",
+    search: "検索",
+    back: "戻る",
+    fit: "全体",
+    selected: "selected",
+    detailInitial: "マップ上の点、または検索結果を選択してください。",
+    detailEmpty: "マップ上の点、または検索結果を選択すると、対応する項目をハイライトします。",
+    detailHint: "詳細はマップ上のオーバーレイで確認できます。",
+    similarButton: "近い論文を探す",
+    loadingEcharts: "EChartsの読み込みに失敗しました。",
+    loadingAssets: "静的ベクトルデータを読み込み中",
+    loaded: count => `${count}件を読み込み済み`,
+    embedding: "OpenAI APIでクエリベクトルを計算中",
+    scoring: "ブラウザ側で類似度を計算中",
+    similarScoring: "ブラウザ側で近傍論文を計算中",
+    queryResults: count => `${count}件を、queryとの類似度を距離にして表示`,
+    paperResults: (title, count) => `「${title}」との類似度を距離にして${count}件を表示`,
+    error: message => `エラー: ${message}`
+  },
+  en: {
+    subtitle: "Papers closer to the center are more similar; neighboring papers are arranged by mutual similarity.",
+    topK: "Results",
+    labelMode: "Map label",
+    tagline: "Summary",
+    title: "Title",
+    language: "Language",
+    search: "Search",
+    back: "Back",
+    fit: "Fit",
+    selected: "selected",
+    detailInitial: "Select a node or result to inspect it.",
+    detailEmpty: "Select a node or result to highlight the corresponding item.",
+    detailHint: "Open the map overlay for details.",
+    similarButton: "Find similar papers",
+    loadingEcharts: "Failed to load ECharts.",
+    loadingAssets: "Loading static vector data",
+    loaded: count => `${count} papers loaded`,
+    embedding: "Computing the query embedding with the OpenAI API",
+    scoring: "Computing similarities in the browser",
+    similarScoring: "Computing nearby papers in the browser",
+    queryResults: count => `Showing ${count} papers by distance from the query`,
+    paperResults: (title, count) => `Showing ${count} papers by distance from "${title}"`,
+    error: message => `Error: ${message}`
+  }
+};
+
+function tr(key, ...args) {
+  const value = I18N[state.language][key];
+  return typeof value === "function" ? value(...args) : value;
+}
 
 function assetUrl(name, version = state.assetVersion) {
   const url = new URL(`assets/${name}`, window.location.href);
@@ -84,13 +151,52 @@ function graphTitle(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function isJapaneseMode() {
+  return state.language === "ja";
+}
+
+function applyUiLanguage() {
+  document.documentElement.lang = state.language;
+  els.subtitle.textContent = tr("subtitle");
+  els.topKLabel.textContent = tr("topK");
+  els.labelModeLabel.textContent = tr("labelMode");
+  els.labelModeTagline.textContent = tr("tagline");
+  els.labelModeTitle.textContent = tr("title");
+  els.languageModeLabel.textContent = tr("language");
+  els.button.textContent = tr("search");
+  els.backLayer.textContent = tr("back");
+  els.fitMap.textContent = tr("fit");
+  els.overlayClose.setAttribute("aria-label", state.language === "ja" ? "閉じる" : "Close");
+  els.overlaySimilar.textContent = tr("similarButton");
+  els.query.setAttribute("aria-label", state.language === "ja" ? "検索語" : "Search query");
+  els.topK.setAttribute("aria-label", tr("topK"));
+  els.labelMode.setAttribute("aria-label", tr("labelMode"));
+  els.languageMode.setAttribute("aria-label", tr("language"));
+}
+
 function paperTitle(paper) {
-  return paper.title_ja || paper.title;
+  return isJapaneseMode() ? (paper.title_ja || paper.title) : paper.title;
+}
+
+function secondaryTitle(paper) {
+  return isJapaneseMode() && paper.title_ja && paper.title_ja !== paper.title ? paper.title : "";
+}
+
+function paperAbstract(paper) {
+  return isJapaneseMode() ? (paper.abstract_ja || paper.abstract || "") : (paper.abstract || "");
+}
+
+function paperSnippet(paper) {
+  return snippet(paperAbstract(paper));
+}
+
+function paperTagline(paper) {
+  return isJapaneseMode() ? paper.tagline_ja : "";
 }
 
 function graphLabel(paper) {
   if (state.labelMode === "title") return paperTitle(paper);
-  return paper.tagline_ja || paperTitle(paper);
+  return paperTagline(paper) || paperTitle(paper);
 }
 
 function paperAt(index, score) {
@@ -192,7 +298,7 @@ function createLayer(mode, center, results, parentId) {
     results,
     label: mode === "query"
       ? `query: ${shortTitle(els.query.value.trim(), 28)}`
-      : `paper: ${shortTitle(center.title_ja || center.title, 28)}`
+      : `paper: ${shortTitle(paperTitle(center), 28)}`
   };
 }
 
@@ -420,8 +526,8 @@ function activateLayer(id) {
   renderDetail(layer.mode === "query" ? null : layer.center);
   renderLayers();
   els.status.textContent = layer.mode === "query"
-    ? `${layer.results.length}件を、queryとの類似度を距離にして表示`
-    : `「${layer.center.title_ja || layer.center.title}」との類似度を距離にして${layer.results.length}件を表示`;
+    ? tr("queryResults", layer.results.length)
+    : tr("paperResults", paperTitle(layer.center), layer.results.length);
 }
 
 function backLayer() {
@@ -530,11 +636,11 @@ function chartOption() {
       formatter: params => {
         if (params.seriesName === "center") {
           return params.data.paper
-            ? `<strong>${escapeHtml(params.data.paper.title_ja || params.data.paper.title)}</strong>`
+            ? `<strong>${escapeHtml(paperTitle(params.data.paper))}</strong>`
             : "query";
         }
         const item = params.data.paper;
-        return `<strong>${escapeHtml(item.title_ja || item.title)}</strong><br>${escapeHtml(item.content_type || "")}<br>score ${Number(item.score).toFixed(3)}`;
+        return `<strong>${escapeHtml(paperTitle(item))}</strong><br>${escapeHtml(item.content_type || "")}<br>score ${Number(item.score).toFixed(3)}`;
       }
     },
     series: [
@@ -652,6 +758,18 @@ function refreshSelection() {
   });
 }
 
+function refreshLanguage() {
+  applyUiLanguage();
+  renderGraph();
+  renderResults(state.currentResults);
+  const selected = state.selectedIndex === null ? null : positionedPaper(state.selectedIndex);
+  renderDetail(selected?.index === undefined ? null : selected);
+  if (!els.overlay.hidden && state.dialogPaper) {
+    openPaperOverlay(positionedPaper(state.dialogPaper.index));
+  }
+  renderLayers();
+}
+
 function currentZoom(index) {
   const option = state.chart.getOption();
   const zoom = option.dataZoom?.[index] || {};
@@ -684,11 +802,11 @@ function renderResults(results) {
     li.dataset.index = result.index;
     li.innerHTML = `
       <div class="rank">#${result.rank} score ${Number(result.score).toFixed(3)}</div>
-      ${result.tagline_ja ? `<div class="tagline">${escapeHtml(result.tagline_ja)}</div>` : ""}
-      <div class="title">${escapeHtml(result.title_ja || result.title)}</div>
-      ${result.title_ja ? `<div class="title-en">${escapeHtml(result.title)}</div>` : ""}
+      ${paperTagline(result) ? `<div class="tagline">${escapeHtml(paperTagline(result))}</div>` : ""}
+      <div class="title">${escapeHtml(paperTitle(result))}</div>
+      ${secondaryTitle(result) ? `<div class="title-en">${escapeHtml(secondaryTitle(result))}</div>` : ""}
       <div class="meta">${escapeHtml([result.content_type, result.session_name, result.session_room].filter(Boolean).join(" / "))}</div>
-      <div class="snippet">${escapeHtml(result.snippet_ja || result.snippet)}</div>
+      <div class="snippet">${escapeHtml(paperSnippet(result))}</div>
       <div class="actions">
         <a href="${result.url}" target="_blank" rel="noreferrer">CHI program</a>
       </div>
@@ -708,15 +826,15 @@ function markActive(index) {
 function renderDetail(result) {
   if (!result) {
     els.detail.className = "empty";
-    els.detail.textContent = "マップ上の点、または検索結果を選択すると、対応する項目をハイライトします。";
+    els.detail.textContent = tr("detailEmpty");
     return;
   }
   els.detail.className = "empty";
   els.detail.innerHTML = `
-    <div class="rank">selected</div>
-    ${result.tagline_ja ? `<div class="tagline">${escapeHtml(result.tagline_ja)}</div>` : ""}
-    <div class="title">${escapeHtml(result.title_ja || result.title)}</div>
-    <div class="meta">詳細はマップ上のオーバーレイで確認できます。</div>
+    <div class="rank">${escapeHtml(tr("selected"))}</div>
+    ${paperTagline(result) ? `<div class="tagline">${escapeHtml(paperTagline(result))}</div>` : ""}
+    <div class="title">${escapeHtml(paperTitle(result))}</div>
+    <div class="meta">${escapeHtml(tr("detailHint"))}</div>
   `;
 }
 
@@ -735,14 +853,14 @@ function overlayPositionFor(result) {
 }
 
 function openPaperOverlay(result) {
-  const abstract = result.abstract_ja || result.abstract || "";
+  const abstract = paperAbstract(result);
   state.dialogPaper = result;
   els.overlayBody.innerHTML = `
     <div class="overlayMeta">
       <div class="rank">selected / score ${Number(result.score).toFixed(3)}</div>
-      ${result.tagline_ja ? `<div class="tagline">${escapeHtml(result.tagline_ja)}</div>` : ""}
-      <div class="title">${escapeHtml(result.title_ja || result.title)}</div>
-      ${result.title_ja ? `<div class="title-en">${escapeHtml(result.title)}</div>` : ""}
+      ${paperTagline(result) ? `<div class="tagline">${escapeHtml(paperTagline(result))}</div>` : ""}
+      <div class="title">${escapeHtml(paperTitle(result))}</div>
+      ${secondaryTitle(result) ? `<div class="title-en">${escapeHtml(secondaryTitle(result))}</div>` : ""}
       <div class="meta">${escapeHtml(result.authors || "")}</div>
       <div class="meta">${escapeHtml([result.content_type, result.session_name, result.session_room].filter(Boolean).join(" / "))}</div>
     </div>
@@ -777,11 +895,11 @@ async function expandFromPaper(result) {
 
 async function runQuery(query) {
   els.button.disabled = true;
-  els.status.textContent = "OpenAI APIでクエリベクトルを計算中";
+  els.status.textContent = tr("embedding");
   try {
     const data = await fetchJson(`${apiBasePath()}/api/embed?q=${encodeURIComponent(query)}`);
     const vector = new Float32Array(data.embedding);
-    els.status.textContent = "ブラウザ側で類似度を計算中";
+    els.status.textContent = tr("scoring");
     const topK = topKValue();
     els.topK.value = String(topK);
     const top = await workerRequest("query", { vector, topK });
@@ -795,16 +913,16 @@ async function runQuery(query) {
     renderGraph();
     renderResults(layout.results);
     renderDetail(null);
-    els.status.textContent = `${layout.results.length}件を、queryとの類似度を距離にして表示`;
+    els.status.textContent = tr("queryResults", layout.results.length);
   } catch (error) {
-    els.status.textContent = `エラー: ${error.message}`;
+    els.status.textContent = tr("error", error.message);
   } finally {
     els.button.disabled = false;
   }
 }
 
 async function runSimilar(index) {
-  els.status.textContent = "ブラウザ側で近傍論文を計算中";
+  els.status.textContent = tr("similarScoring");
   const topK = topKValue();
   els.topK.value = String(topK);
   const top = await workerRequest("similar", { index, topK });
@@ -824,12 +942,12 @@ async function runSimilar(index) {
   renderGraph();
   renderResults(layout.results);
   renderDetail(source);
-  els.status.textContent = `「${source.title_ja || source.title}」との類似度を距離にして${layout.results.length}件を表示`;
+  els.status.textContent = tr("paperResults", paperTitle(source), layout.results.length);
 }
 
 async function init() {
   if (!window.echarts) {
-    els.status.textContent = "EChartsの読み込みに失敗しました。";
+    els.status.textContent = tr("loadingEcharts");
     return;
   }
   state.chart = echarts.init(els.chart, null, { renderer: "canvas" });
@@ -838,7 +956,9 @@ async function init() {
       selectResult(params.data.paper, true);
     }
   });
-  els.status.textContent = "静的ベクトルデータを読み込み中";
+  applyUiLanguage();
+  renderDetail(null);
+  els.status.textContent = tr("loadingAssets");
   const manifest = await fetchJson(assetUrl("manifest.json", ""), { cache: "no-store" });
   state.assetVersion = manifest.version || Date.now().toString();
   const [papers, embeddings] = await Promise.all([
@@ -848,7 +968,7 @@ async function init() {
   state.papers = papers;
   state.embeddingDims = embeddings.length / papers.length;
   await initWorker(embeddings);
-  els.status.textContent = `${papers.length}件を読み込み済み`;
+  els.status.textContent = tr("loaded", papers.length);
   await runQuery(els.query.value.trim());
 }
 
@@ -861,6 +981,11 @@ els.form.addEventListener("submit", event => {
 els.labelMode.addEventListener("change", () => {
   state.labelMode = els.labelMode.value === "title" ? "title" : "tagline";
   renderGraph();
+});
+
+els.languageMode.addEventListener("change", () => {
+  state.language = els.languageMode.value === "en" ? "en" : "ja";
+  refreshLanguage();
 });
 
 els.backLayer.addEventListener("click", backLayer);
