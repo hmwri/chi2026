@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, List
@@ -45,6 +46,14 @@ def compact_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main() -> int:
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -60,13 +69,19 @@ def main() -> int:
     if len(papers) != len(embeddings) or len(papers) != len(coords):
         raise ValueError("papers, embeddings, and projection row counts differ")
 
-    (args.out_dir / "papers.json").write_text(
+    papers_path = args.out_dir / "papers.json"
+    embeddings_path = args.out_dir / "embeddings.f32"
+    coords_path = args.out_dir / "coords.f32"
+    projection_path = args.out_dir / "projection.json"
+    manifest_path = args.out_dir / "manifest.json"
+
+    papers_path.write_text(
         json.dumps([compact_paper(paper) for paper in papers], ensure_ascii=False),
         encoding="utf-8",
     )
-    embeddings.tofile(args.out_dir / "embeddings.f32")
-    coords.tofile(args.out_dir / "coords.f32")
-    (args.out_dir / "projection.json").write_text(
+    embeddings.tofile(embeddings_path)
+    coords.tofile(coords_path)
+    projection_path.write_text(
         json.dumps(
             {
                 "mean": mean.tolist(),
@@ -80,10 +95,22 @@ def main() -> int:
         ),
         encoding="utf-8",
     )
-    print(f"Wrote {args.out_dir / 'papers.json'}")
-    print(f"Wrote {args.out_dir / 'embeddings.f32'}")
-    print(f"Wrote {args.out_dir / 'coords.f32'}")
-    print(f"Wrote {args.out_dir / 'projection.json'}")
+    manifest = {
+        "version": file_sha256(embeddings_path)[:16],
+        "files": {
+            "papers.json": file_sha256(papers_path),
+            "embeddings.f32": file_sha256(embeddings_path),
+            "coords.f32": file_sha256(coords_path),
+            "projection.json": file_sha256(projection_path),
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    print(f"Wrote {papers_path}")
+    print(f"Wrote {embeddings_path}")
+    print(f"Wrote {coords_path}")
+    print(f"Wrote {projection_path}")
+    print(f"Wrote {manifest_path}")
     return 0
 
 

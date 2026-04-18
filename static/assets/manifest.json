@@ -1,0 +1,9 @@
+{
+  "version": "10576d9b260eb6f2",
+  "files": {
+    "papers.json": "c46b905ead8359f786d1b48b4f74ecde154a333ed1071cc410b00f95ceac23f4",
+    "embeddings.f32": "10576d9b260eb6f2408716cda241d0a55b412cac6bb8199ddfaf51d41247fb47",
+    "coords.f32": "ba7d3221d55f8d6f95e3b61710ea630becacb49a60095a8d82586fe60ef680f1",
+    "projection.json": "087ba7a60157f3e3e87328c97b64c8ddfd38bd4e93364d493d004eb46b9e04cb"
+  }
+}

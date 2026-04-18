@@ -4,6 +4,7 @@ const state = {
   projection: null,
   chart: null,
   worker: null,
+  assetVersion: "",
   requestSeq: 0,
   currentResults: [],
   currentCenter: null,
@@ -20,23 +21,25 @@ const els = {
   chart: document.querySelector("#chart")
 };
 
-function assetUrl(name) {
-  return new URL(`assets/${name}`, window.location.href).toString();
+function assetUrl(name, version = state.assetVersion) {
+  const url = new URL(`assets/${name}`, window.location.href);
+  if (version) url.searchParams.set("v", version);
+  return url.toString();
 }
 
 function apiBasePath() {
   return window.location.pathname.replace(/\/$/, "");
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url);
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, options);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
 
-async function fetchFloat32(url) {
-  const res = await fetch(url);
+async function fetchFloat32(url, options = {}) {
+  const res = await fetch(url, options);
   if (!res.ok) throw new Error(res.statusText);
   return new Float32Array(await res.arrayBuffer());
 }
@@ -270,12 +273,19 @@ async function init() {
     return;
   }
   state.chart = echarts.init(els.chart, null, { renderer: "canvas" });
+  state.chart.on("click", params => {
+    if (params.seriesName === "results" && params.data && params.data.paper) {
+      selectResult(params.data.paper, true);
+    }
+  });
   els.status.textContent = "静的ベクトルデータを読み込み中";
+  const manifest = await fetchJson(assetUrl("manifest.json", ""), { cache: "no-store" });
+  state.assetVersion = manifest.version || Date.now().toString();
   const [papers, projection, embeddings, coords] = await Promise.all([
-    fetchJson(assetUrl("papers.json")),
-    fetchJson(assetUrl("projection.json")),
-    fetchFloat32(assetUrl("embeddings.f32")),
-    fetchFloat32(assetUrl("coords.f32"))
+    fetchJson(assetUrl("papers.json"), { cache: "no-store" }),
+    fetchJson(assetUrl("projection.json"), { cache: "no-store" }),
+    fetchFloat32(assetUrl("embeddings.f32"), { cache: "no-store" }),
+    fetchFloat32(assetUrl("coords.f32"), { cache: "no-store" })
   ]);
   state.papers = papers;
   state.projection = projection;
