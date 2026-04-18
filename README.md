@@ -78,8 +78,17 @@ Default local URL:
 http://127.0.0.1:8080/
 ```
 
-The app keeps `OPENAI_API_KEY` on the server. The browser only receives search
-results and 2D coordinates.
+The app keeps `OPENAI_API_KEY` on the server. The server only relays query
+embedding requests to OpenAI via `/api/embed`. The browser loads static
+metadata/vectors and performs similarity search and click-to-nearest-paper
+exploration locally using `Float32Array` in a Web Worker. The map uses Apache
+ECharts with the Canvas renderer.
+
+Build browser-side assets after rebuilding embeddings:
+
+```powershell
+uv run python build_visual_assets.py
+```
 
 ### Caddy Under A Path
 
