@@ -15,6 +15,15 @@ DEFAULT_DATA_DIR = Path("data")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build 2D projection data.")
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
+    parser.add_argument(
+        "--method",
+        choices=["pca", "umap"],
+        default="umap",
+        help="2D projection method.",
+    )
+    parser.add_argument("--n-neighbors", type=int, default=30)
+    parser.add_argument("--min-dist", type=float, default=0.05)
+    parser.add_argument("--random-state", type=int, default=42)
     return parser.parse_args()
 
 
@@ -34,19 +43,34 @@ def main() -> int:
     if len(papers) != len(embeddings):
         raise ValueError(f"{len(papers)} papers but {len(embeddings)} embeddings")
 
-    mean = embeddings.mean(axis=0, keepdims=True)
-    centered = embeddings - mean
-    _u, _s, vt = np.linalg.svd(centered, full_matrices=False)
-    components = vt[:2].astype("float32")
-    coords = (centered @ components.T).astype("float32")
+    mean = None
+    components = None
+    if args.method == "pca":
+        mean = embeddings.mean(axis=0, keepdims=True).astype("float32")
+        centered = embeddings - mean
+        _u, _s, vt = np.linalg.svd(centered, full_matrices=False)
+        components = vt[:2].astype("float32")
+        coords = (centered @ components.T).astype("float32")
+    else:
+        import umap
 
-    np.savez_compressed(
-        output_path,
-        coords=coords,
-        mean=mean.reshape(-1).astype("float32"),
-        components=components,
-    )
+        reducer = umap.UMAP(
+            n_components=2,
+            n_neighbors=args.n_neighbors,
+            min_dist=args.min_dist,
+            metric="cosine",
+            random_state=args.random_state,
+            low_memory=True,
+        )
+        coords = reducer.fit_transform(embeddings).astype("float32")
+
+    payload = {"coords": coords, "method": np.array(args.method)}
+    if mean is not None and components is not None:
+        payload["mean"] = mean.reshape(-1).astype("float32")
+        payload["components"] = components
+    np.savez_compressed(output_path, **payload)
     print(f"Wrote {output_path}")
+    print(f"method: {args.method}")
     print(f"coords shape: {coords.shape}")
     return 0
 

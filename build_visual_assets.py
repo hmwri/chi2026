@@ -62,8 +62,13 @@ def main() -> int:
     embeddings = np.load(args.data_dir / "embeddings.npy").astype("float32")
     projection = np.load(args.data_dir / "projection.npz")
     coords = projection["coords"].astype("float32")
-    mean = projection["mean"].astype("float32")
-    components = projection["components"].astype("float32")
+    method = str(projection["method"]) if "method" in projection.files else "pca"
+    mean = projection["mean"].astype("float32") if "mean" in projection.files else None
+    components = (
+        projection["components"].astype("float32")
+        if "components" in projection.files
+        else None
+    )
     meta = json.loads((args.data_dir / "index_meta.json").read_text(encoding="utf-8"))
 
     if len(papers) != len(embeddings) or len(papers) != len(coords):
@@ -84,8 +89,9 @@ def main() -> int:
     projection_path.write_text(
         json.dumps(
             {
-                "mean": mean.tolist(),
-                "components": components.tolist(),
+                "method": method,
+                "mean": mean.tolist() if mean is not None else None,
+                "components": components.tolist() if components is not None else None,
                 "count": len(papers),
                 "dimensions": int(embeddings.shape[1]),
                 "model": meta["model"],

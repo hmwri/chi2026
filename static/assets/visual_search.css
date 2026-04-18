@@ -18,14 +18,17 @@ body {
   background: var(--paper);
 }
 main {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
 }
 #mapPane {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 header {
   z-index: 2;
@@ -76,13 +79,37 @@ button:disabled {
   cursor: wait;
   opacity: .7;
 }
+#mapStage {
+  min-height: 0;
+  position: relative;
+}
 #chart {
-  min-height: 700px;
   height: 100%;
+  min-height: 0;
   background:
     linear-gradient(#e9edf2 1px, transparent 1px),
     linear-gradient(90deg, #e9edf2 1px, transparent 1px);
   background-size: 44px 44px;
+}
+.mapControls {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.map-button {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.94);
+  color: var(--ink);
+  font-weight: 700;
 }
 #sidePane {
   border-left: 1px solid var(--line);
@@ -91,6 +118,7 @@ button:disabled {
   display: grid;
   grid-template-rows: auto auto 1fr;
   min-width: 0;
+  min-height: 0;
 }
 #status {
   padding: 16px 18px 10px;
@@ -189,9 +217,22 @@ li.active {
 .query-dot { background: var(--query); }
 .paper-dot { background: var(--accent-2); }
 @media (max-width: 920px) {
-  main { grid-template-columns: 1fr; }
+  main {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+    grid-template-columns: 1fr;
+  }
   #sidePane { border-left: 0; border-top: 1px solid var(--line); }
   header { grid-template-columns: 1fr; }
   form { grid-template-columns: 1fr 86px; }
-  #chart { min-height: 520px; }
+  #mapStage,
+  #chart {
+    height: min(72vh, 620px);
+    min-height: 420px;
+  }
+  .mapControls {
+    top: 10px;
+    right: 10px;
+  }
 }
