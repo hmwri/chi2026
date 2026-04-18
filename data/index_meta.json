@@ -1,5 +1,5 @@
 {
-  "created_at_unix": 1776418963,
+  "created_at_unix": 1776487646,
   "dimensions": null,
   "document_count": 2782,
   "embedding_dtype": "float32",
@@ -9,5 +9,5 @@
     1536
   ],
   "model": "text-embedding-3-small",
-  "source_csv": "chi2026_program_all_tracks.csv"
+  "source_csv": "chi2026_program_all_tracks_ja.csv"
 }

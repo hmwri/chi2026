@@ -89,13 +89,17 @@ def snippet(text: str, max_len: int = 280) -> str:
 def print_result(rank: int, score: float, paper: Dict[str, Any]) -> None:
     metadata = paper.get("metadata", {})
     title = metadata.get("title_en") or paper.get("title") or "(untitled)"
+    title_ja = metadata.get("title_ja") or ""
     authors = metadata.get("authors") or ""
     content_type = metadata.get("content_type") or ""
     session = metadata.get("session_name") or ""
     url = metadata.get("content_url") or paper.get("url") or ""
     abstract = metadata.get("abstract_en") or ""
+    abstract_ja = metadata.get("abstract_ja") or ""
 
     print(f"{rank}. {title}")
+    if title_ja:
+        print(f"   title_ja: {title_ja}")
     print(f"   score: {score:.4f}")
     if authors:
         print(f"   authors: {authors}")
@@ -105,6 +109,8 @@ def print_result(rank: int, score: float, paper: Dict[str, Any]) -> None:
         print(f"   url: {url}")
     if abstract:
         print(f"   abstract: {snippet(abstract)}")
+    if abstract_ja:
+        print(f"   abstract_ja: {snippet(abstract_ja)}")
     print()
 
 

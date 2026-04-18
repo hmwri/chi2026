@@ -33,7 +33,9 @@ DEFAULT_MAX_CHARS = 24_000
 
 TEXT_FIELDS = [
     ("Title", "title_en"),
+    ("Japanese title", "title_ja"),
     ("Abstract", "abstract_en"),
+    ("Japanese abstract", "abstract_ja"),
     ("Authors", "authors"),
     ("Affiliations", "affiliations"),
     ("Author departments", "author_departments"),
@@ -59,7 +61,9 @@ TEXT_FIELDS = [
 METADATA_FIELDS = [
     "content_id",
     "title_en",
+    "title_ja",
     "abstract_en",
+    "abstract_ja",
     "authors",
     "affiliations",
     "author_departments",
