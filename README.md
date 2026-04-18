@@ -58,6 +58,65 @@ Exposed MCP tools:
 - `search`: semantic search over CHI 2026 content
 - `fetch`: fetch full details by `content_id`
 
+## Visual Search Web App
+
+Build the 2D projection once after rebuilding embeddings:
+
+```powershell
+uv run python build_projection.py
+```
+
+Start the visual search app:
+
+```powershell
+uv run python web_search_app.py
+```
+
+Default local URL:
+
+```text
+http://127.0.0.1:8080/
+```
+
+The app keeps `OPENAI_API_KEY` on the server. The browser only receives search
+results and 2D coordinates.
+
+### Caddy Under A Path
+
+Recommended Caddy setup strips the public path prefix before proxying:
+
+```caddyfile
+example.com {
+    redir /chi2026 /chi2026/
+
+    handle_path /chi2026/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+}
+```
+
+With this `handle_path` setup, keep:
+
+```text
+WEB_BASE_PATH=
+```
+
+If you do not strip the prefix, set `WEB_BASE_PATH` and proxy the path as-is:
+
+```text
+WEB_BASE_PATH=/chi2026
+```
+
+```caddyfile
+example.com {
+    redir /chi2026 /chi2026/
+
+    handle /chi2026/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+}
+```
+
 ## Japanese Translation With vLLM
 
 Start a vLLM OpenAI-compatible server separately, then run:
