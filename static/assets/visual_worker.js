@@ -23,6 +23,52 @@ function topKFromVector(vector, topK, excludeIndex) {
   return results;
 }
 
+function similarity(a, b) {
+  let score = 0;
+  const aOffset = a * dims;
+  const bOffset = b * dims;
+  for (let dim = 0; dim < dims; dim++) {
+    score += embeddings[aOffset + dim] * embeddings[bOffset + dim];
+  }
+  return score;
+}
+
+function orderByPairSimilarity(indices) {
+  if (indices.length <= 2) return indices;
+  const remaining = new Set(indices);
+  let bestStart = indices[0];
+  let bestMean = -Infinity;
+  for (const index of indices) {
+    let total = 0;
+    for (const other of indices) {
+      if (other !== index) total += similarity(index, other);
+    }
+    const mean = total / Math.max(indices.length - 1, 1);
+    if (mean > bestMean) {
+      bestMean = mean;
+      bestStart = index;
+    }
+  }
+
+  const ordered = [bestStart];
+  remaining.delete(bestStart);
+  while (remaining.size) {
+    const last = ordered[ordered.length - 1];
+    let bestNext = null;
+    let bestScore = -Infinity;
+    for (const candidate of remaining) {
+      const score = similarity(last, candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        bestNext = candidate;
+      }
+    }
+    ordered.push(bestNext);
+    remaining.delete(bestNext);
+  }
+  return ordered;
+}
+
 self.onmessage = event => {
   const message = event.data;
   if (message.type === "init") {
@@ -48,6 +94,14 @@ self.onmessage = event => {
       type: "results",
       requestId: message.requestId,
       results: topKFromVector(vector, message.topK, message.index)
+    });
+    return;
+  }
+  if (message.type === "order") {
+    self.postMessage({
+      type: "results",
+      requestId: message.requestId,
+      results: orderByPairSimilarity(message.indices)
     });
   }
 };

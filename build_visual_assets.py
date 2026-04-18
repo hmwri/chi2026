@@ -34,6 +34,7 @@ def compact_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
         "title_ja": metadata.get("title_ja") or "",
         "abstract": metadata.get("abstract_en") or "",
         "abstract_ja": metadata.get("abstract_ja") or "",
+        "tagline_ja": metadata.get("tagline_ja") or "",
         "url": metadata.get("content_url") or paper.get("url"),
         "authors": metadata.get("authors") or "",
         "content_type": metadata.get("content_type") or "",

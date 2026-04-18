@@ -40,6 +40,9 @@ header {
   gap: 16px;
   align-items: center;
 }
+header > div {
+  min-width: 0;
+}
 h1 {
   margin: 0;
   font-size: 24px;
@@ -54,19 +57,45 @@ p {
 }
 form {
   display: grid;
-  grid-template-columns: minmax(260px, 440px) 92px;
+  grid-template-columns: minmax(260px, 440px) 112px 136px 92px;
   gap: 8px;
 }
-input, button {
+input, select, button {
   min-height: 42px;
   border-radius: 8px;
   font: inherit;
 }
-input {
+input, select {
   border: 1px solid var(--line);
   padding: 0 12px;
   color: var(--ink);
   background: #fff;
+}
+.countControl,
+.labelControl {
+  position: relative;
+  display: block;
+}
+.countControl span,
+.labelControl span {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+.countControl input {
+  width: 100%;
+  padding: 15px 8px 0 10px;
+  text-align: center;
+  font-weight: 700;
+}
+.labelControl select {
+  width: 100%;
+  padding: 15px 26px 0 10px;
+  font-weight: 700;
 }
 button {
   border: 0;
@@ -111,12 +140,13 @@ button:disabled {
   color: var(--ink);
   font-weight: 700;
 }
+.map-button:disabled {
+  cursor: default;
+}
 #sidePane {
   border-left: 1px solid var(--line);
   background: var(--panel);
   overflow: auto;
-  display: grid;
-  grid-template-rows: auto auto 1fr;
   min-width: 0;
   min-height: 0;
 }
@@ -126,6 +156,34 @@ button:disabled {
   font-size: 13px;
   line-height: 1.45;
 }
+#layers {
+  padding: 0 18px 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.layer-button {
+  min-height: 32px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layer-button.active {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent);
+}
+.layer-button.off-path {
+  opacity: .58;
+}
 #detail {
   margin: 0 18px 14px;
   padding: 14px;
@@ -133,6 +191,16 @@ button:disabled {
   border-radius: 8px;
   background: var(--soft);
   min-height: 120px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+#detail .snippet {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
 }
 #detail.empty {
   color: var(--muted);
@@ -162,6 +230,17 @@ li.active {
   font-size: 13px;
   margin-bottom: 6px;
 }
+.tagline {
+  display: inline-block;
+  margin-bottom: 7px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #e6f3f1;
+  color: #006b63;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
 .title {
   font-weight: 700;
   line-height: 1.35;
@@ -184,7 +263,75 @@ li.active {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
   margin-top: 12px;
+}
+.actions a {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+#paperOverlay {
+  position: fixed;
+  z-index: 10;
+  width: min(430px, calc(100vw - 28px));
+  height: min(520px, calc(100vh - 28px));
+  overflow: hidden;
+  padding: 18px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(23,25,31,.22);
+}
+#paperOverlay[hidden] {
+  display: none;
+}
+.dialogClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  min-height: 32px;
+  min-width: 32px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+#overlayBody {
+  padding-right: 30px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+.overlayMeta {
+  min-height: 0;
+}
+#overlayBody .snippet {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow: auto;
+  min-height: 0;
+  padding-right: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.dialogActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
 }
 .link-button, a {
   color: var(--accent);
@@ -225,7 +372,7 @@ li.active {
   }
   #sidePane { border-left: 0; border-top: 1px solid var(--line); }
   header { grid-template-columns: 1fr; }
-  form { grid-template-columns: 1fr 86px; }
+  form { grid-template-columns: 1fr 94px 128px 86px; }
   #mapStage,
   #chart {
     height: min(72vh, 620px);

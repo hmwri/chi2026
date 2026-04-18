@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CHI 2026 Visual Search</title>
-  <link rel="stylesheet" href="assets/visual_search.css?v=20260418-map">
+  <link rel="stylesheet" href="assets/visual_search.css?v=20260418-label-mode">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -13,19 +13,31 @@
       <header>
         <div>
           <h1>CHI 2026 Visual Search</h1>
-          <p>検索語から始めて、気になる論文へ探索を広げます。</p>
+          <p>中心に近い論文ほど内側へ、隣り合う論文ほど互いに近くなるように配置します。</p>
           <div class="legend">
-            <span><span class="dot query-dot"></span>query / selected paper</span>
-            <span><span class="dot paper-dot"></span>nearby papers</span>
+            <span><span class="dot query-dot"></span>center</span>
+            <span><span class="dot paper-dot"></span>similar papers</span>
           </div>
         </div>
         <form id="searchForm">
           <input id="query" name="q" value="視覚障害者のナビゲーション アクセシビリティ" autocomplete="off" aria-label="検索語">
+          <label class="countControl">
+            <span>表示件数</span>
+            <input id="topK" name="topK" type="number" min="3" max="30" step="1" value="10" aria-label="表示件数">
+          </label>
+          <label class="labelControl">
+            <span>グラフ表示</span>
+            <select id="labelMode" name="labelMode" aria-label="グラフ表示">
+              <option value="tagline" selected>キャッチコピー</option>
+              <option value="title">タイトル</option>
+            </select>
+          </label>
           <button id="submit" type="submit">検索</button>
         </form>
       </header>
       <div id="mapStage">
         <div class="mapControls" aria-label="マップ操作">
+          <button id="backLayer" class="map-button" type="button" disabled>戻る</button>
           <button id="zoomIn" class="map-button" type="button">+</button>
           <button id="zoomOut" class="map-button" type="button">-</button>
           <button id="fitMap" class="map-button" type="button">全体</button>
@@ -35,10 +47,19 @@
     </section>
     <aside id="sidePane">
       <div id="status">読み込み中</div>
+      <div id="layers" aria-label="探索レイヤ"></div>
       <div id="detail" class="empty">マップ上の点、または検索結果を選択してください。</div>
       <ol id="results"></ol>
     </aside>
   </main>
-  <script src="assets/visual_search.js?v=20260418-map"></script>
+  <div id="paperOverlay" hidden>
+    <button id="overlayClose" class="dialogClose" type="button" aria-label="閉じる">×</button>
+    <div id="overlayBody"></div>
+    <div class="dialogActions">
+        <button id="overlaySimilar" class="link-button" type="button">近い論文を探す</button>
+      <a id="overlayProgram" href="#" target="_blank" rel="noreferrer">CHI program</a>
+    </div>
+  </div>
+  <script src="assets/visual_search.js?v=20260418-label-mode"></script>
 </body>
 </html>

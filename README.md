@@ -58,6 +58,9 @@ Exposed MCP tools:
 - `search`: semantic search over CHI 2026 content
 - `fetch`: fetch full details by `content_id`
 
+Both tools include Japanese fields where available, including `title_ja`,
+`abstract_ja`, and `tagline_ja`.
+
 ## Visual Search Web App
 
 Build the 2D projection once after rebuilding embeddings:
@@ -161,4 +164,38 @@ uv run python translate_csv.py --limit 10 --output chi2026_program_all_tracks_ja
 uv run python translate_csv.py --in-place
 uv run python translate_csv.py --concurrency 100
 uv run python translate_csv.py --strict
+```
+
+## Japanese Tagline Generation With vLLM
+
+Generate short Japanese one-line summaries separately from translation:
+
+```powershell
+uv run python generate_taglines.py --input chi2026_program_all_tracks_ja.csv
+```
+
+This writes `tagline_ja` to a CSV and caches results in:
+
+```text
+data/taglines_ja.json
+```
+
+The tagline prompt is written in Japanese. It always uses `title_en` and
+`abstract_en` as input so the tagline is generated from the original English
+paper text rather than from the Japanese translation.
+
+Useful options:
+
+```powershell
+uv run python generate_taglines.py --dry-run --limit 3
+uv run python generate_taglines.py --limit 10 --output chi2026_program_all_tracks_ja_tagline_test.csv
+uv run python generate_taglines.py --in-place
+uv run python generate_taglines.py --concurrency 100
+uv run python generate_taglines.py --strict
+```
+
+To copy cached taglines into `data/papers.jsonl`:
+
+```powershell
+uv run python sync_taglines_to_papers.py
 ```
