@@ -55,6 +55,8 @@ APP_HOST=127.0.0.1
 APP_PORT=8000
 APP_BASE_PATH=
 MCP_PATH=/mcp
+APP_ALLOWED_HOSTS=your-domain.example
+APP_ALLOWED_ORIGINS=https://your-domain.example
 ```
 
 Exposed MCP tools:
@@ -116,6 +118,8 @@ With this `handle_path` setup, keep:
 ```text
 APP_BASE_PATH=
 MCP_PATH=/mcp
+APP_ALLOWED_HOSTS=example.com
+APP_ALLOWED_ORIGINS=https://example.com
 ```
 
 The public MCP URL is:

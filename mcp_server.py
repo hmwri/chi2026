@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from openai import OpenAI
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, Response
@@ -36,6 +37,31 @@ EMBEDDING_DIMENSIONS = (
 )
 MAX_TOP_K = int(os.environ.get("MAX_TOP_K", "50"))
 
+
+def csv_env(name: str) -> List[str]:
+    return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
+
+
+def transport_security_settings() -> TransportSecuritySettings:
+    allowed_hosts = [
+        "127.0.0.1:*",
+        "localhost:*",
+        "[::1]:*",
+        *csv_env("APP_ALLOWED_HOSTS"),
+    ]
+    allowed_origins = [
+        "http://127.0.0.1:*",
+        "http://localhost:*",
+        "http://[::1]:*",
+        *csv_env("APP_ALLOWED_ORIGINS"),
+    ]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+    )
+
+
 mcp = FastMCP(
     "CHI 2026 Paper Search",
     instructions=(
@@ -48,6 +74,7 @@ mcp = FastMCP(
     host=APP_HOST,
     port=APP_PORT,
     streamable_http_path=MCP_PATH,
+    transport_security=transport_security_settings(),
 )
 
 
