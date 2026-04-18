@@ -1,7 +1,7 @@
 [project]
 name = "chi2026"
 version = "0.1.0"
-description = "Add your description here"
+description = "CHI 2026 semantic paper search, visual explorer, and MCP server"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

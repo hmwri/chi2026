@@ -13,3 +13,8 @@ wheels/
 .env
 .env.*
 !.env.example
+
+# Local/generated backups
+*.bak
+*_test.csv
+data/*failures.jsonl
