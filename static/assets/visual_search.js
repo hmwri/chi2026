@@ -106,6 +106,16 @@ function paperAt(index, score) {
   };
 }
 
+function rankedResults(results) {
+  return results
+    .slice()
+    .sort((a, b) => b.score - a.score)
+    .map((result, index) => ({
+      ...result,
+      rank: index + 1
+    }));
+}
+
 function topKValue() {
   const value = Number.parseInt(els.topK.value, 10);
   if (!Number.isFinite(value)) return 10;
@@ -132,7 +142,8 @@ async function orderResultsByPairSimilarity(results) {
   return order.map(index => byIndex.get(index)).filter(Boolean);
 }
 
-function circularLayout(center, orderedResults) {
+function circularLayout(center, similarityRankedResults, placementOrderedResults) {
+  const orderedResults = placementOrderedResults || similarityRankedResults;
   const countScale = Math.min(Math.max(orderedResults.length - 10, 0) * 0.025, 0.35);
   const minRadius = center.kind === "paper" ? 0.34 : 0.44;
   const maxRadius = (center.kind === "paper" ? 1.08 : 1.52) + countScale;
@@ -157,7 +168,7 @@ function circularLayout(center, orderedResults) {
   });
   return {
     center,
-    results: laidOut
+    results: similarityRankedResults.map(result => laidOut.find(item => item.index === result.index) || result)
   };
 }
 
@@ -241,7 +252,7 @@ function paperSeriesData() {
   return Array.from(state.graph.nodes.values())
     .filter(item => item.index !== state.selectedIndex)
     .map(item => {
-      const rank = state.currentResults.findIndex(result => result.index === item.index) + 1 || "";
+      const rank = item.rank || "";
       const placement = labelPlacement(item);
       return {
         value: [item.x, item.y, item.score],
@@ -764,10 +775,9 @@ async function runQuery(query) {
     const topK = topKValue();
     els.topK.value = String(topK);
     const top = await workerRequest("query", { vector, topK });
-    const results = await orderResultsByPairSimilarity(
-      top.map(([index, score]) => paperAt(index, score))
-    );
-    const layout = circularLayout({ x: 0, y: 0, label: "query", kind: "query" }, results);
+    const results = rankedResults(top.map(([index, score]) => paperAt(index, score)));
+    const placement = await orderResultsByPairSimilarity(results);
+    const layout = circularLayout({ x: 0, y: 0, label: "query", kind: "query" }, results, placement);
     state.currentMode = "query";
     state.currentResults = layout.results;
     resetGraph(layout.center, layout.results);
@@ -788,16 +798,15 @@ async function runSimilar(index) {
   const topK = topKValue();
   els.topK.value = String(topK);
   const top = await workerRequest("similar", { index, topK });
-  const results = await orderResultsByPairSimilarity(
-    top.map(([paperIndex, score]) => paperAt(paperIndex, score))
-  );
+  const results = rankedResults(top.map(([paperIndex, score]) => paperAt(paperIndex, score)));
+  const placement = await orderResultsByPairSimilarity(results);
   const sourcePaper = positionedPaper(index);
   const source = {
     ...sourcePaper,
     label: shortTitle(graphLabel(sourcePaper), 42),
     kind: "paper"
   };
-  const layout = circularLayout(source, results);
+  const layout = circularLayout(source, results, placement);
   state.currentMode = "similar";
   state.currentResults = layout.results;
   mergeNeighborhood(layout.center, layout.results);
