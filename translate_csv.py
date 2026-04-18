@@ -27,6 +27,12 @@ DEFAULT_MODEL = "gemma4-e4b"
 DEFAULT_CONCURRENCY = 100
 
 
+class TranslationParseError(ValueError):
+    def __init__(self, message: str, raw_output: str):
+        super().__init__(message)
+        self.raw_output = raw_output
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Translate title_ja and abstract_ja columns in a CHI CSV."
@@ -165,15 +171,41 @@ def needs_translation(row: Dict[str, str], overwrite: bool) -> bool:
     return not (clean_text(row.get("title_ja")) and clean_text(row.get("abstract_ja")))
 
 
+def strip_code_fence(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+    return text.strip()
+
+
+def escape_invalid_json_backslashes(text: str) -> str:
+    # Model outputs sometimes contain raw LaTeX-like strings such as \textsc or
+    # \& inside JSON strings. Python's json parser treats \t as a valid tab
+    # escape, which silently corrupts \textsc into a tab plus "extsc". Preserve
+    # raw backslashes unless they are needed for JSON quoting, paths, or unicode.
+    return re.sub(r'\\(?!["\\/u])', r"\\\\", text)
+
+
+def load_json_lenient(text: str) -> Dict[str, Any]:
+    candidates = [strip_code_fence(text)]
+    match = re.search(r"\{.*\}", candidates[0], flags=re.DOTALL)
+    if match:
+        candidates.append(match.group(0))
+
+    last_error: Optional[Exception] = None
+    for candidate in candidates:
+        for attempt in (escape_invalid_json_backslashes(candidate), candidate):
+            try:
+                return json.loads(attempt)
+            except json.JSONDecodeError as exc:
+                last_error = exc
+    raise TranslationParseError(f"Could not parse model output as JSON: {last_error}", text)
+
+
 def extract_json(text: str) -> Dict[str, str]:
     text = text.strip()
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if not match:
-            raise
-        data = json.loads(match.group(0))
+    data = load_json_lenient(text)
     return {
         "title_ja": clean_text(data.get("title_ja")),
         "abstract_ja": clean_text(data.get("abstract_ja")),
@@ -197,10 +229,12 @@ def translate_one(
         "scope, claims, limitations, and nuance of the original. Use terminology "
         "that would feel natural in Japanese research abstracts. Preserve "
         "technical terms, acronyms, product names, citations, equations, URLs, "
-        "and numbers when translating them would be harmful. Keep the title "
-        "concise and publication-like. Keep the abstract as one coherent "
-        "Japanese paragraph unless the source requires otherwise. Return only "
-        "valid JSON with keys title_ja and abstract_ja."
+        "and numbers when translating them would be harmful. Do not emit raw "
+        "LaTeX backslash commands such as \\textsc or \\&; translate them into "
+        "plain readable text, or escape backslashes correctly if they must be "
+        "kept. Keep the title concise and publication-like. Keep the abstract "
+        "as one coherent Japanese paragraph unless the source requires "
+        "otherwise. Return only valid JSON with keys title_ja and abstract_ja."
     )
     user = json.dumps(
         {"title_en": title, "abstract_en": abstract},
@@ -358,6 +392,7 @@ def main() -> int:
                     **context,
                     "error_type": type(exc).__name__,
                     "error": str(exc),
+                    "raw_output": getattr(exc, "raw_output", "")[:4000],
                     "model": args.model,
                     "base_url": args.base_url,
                     "created_at_unix": int(time.time()),
