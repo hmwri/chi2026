@@ -57,3 +57,30 @@ Exposed MCP tools:
 
 - `search`: semantic search over CHI 2026 content
 - `fetch`: fetch full details by `content_id`
+
+## Japanese Translation With vLLM
+
+Start a vLLM OpenAI-compatible server separately, then run:
+
+```powershell
+uv run python translate_csv.py --input chi2026_program_all_tracks.csv
+```
+
+By default this writes:
+
+```text
+chi2026_program_all_tracks_ja.csv
+```
+
+The script fills `title_ja` and `abstract_ja`, caches translations in
+`data/translations_ja.json`, and avoids retranslating duplicate `content_id`
+entries.
+
+Useful options:
+
+```powershell
+uv run python translate_csv.py --dry-run --limit 3
+uv run python translate_csv.py --limit 10 --output chi2026_program_all_tracks_ja_test.csv
+uv run python translate_csv.py --in-place
+uv run python translate_csv.py --concurrency 100
+```
