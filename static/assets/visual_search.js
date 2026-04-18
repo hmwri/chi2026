@@ -1,4 +1,4 @@
-const UI_VERSION = "20260418-label-mode";
+const UI_VERSION = "20260418-rank-order";
 
 const state = {
   papers: [],
@@ -114,6 +114,16 @@ function rankedResults(results) {
       ...result,
       rank: index + 1
     }));
+}
+
+function displayResults(results) {
+  return rankedResults(results).map(result => {
+    const existing = results.find(item => item.index === result.index) || {};
+    return {
+      ...existing,
+      ...result
+    };
+  });
 }
 
 function topKValue() {
@@ -669,11 +679,11 @@ function zoomBy(factor) {
 
 function renderResults(results) {
   els.results.innerHTML = "";
-  for (const [index, result] of results.entries()) {
+  for (const result of displayResults(results)) {
     const li = document.createElement("li");
     li.dataset.index = result.index;
     li.innerHTML = `
-      <div class="rank">#${index + 1} score ${Number(result.score).toFixed(3)}</div>
+      <div class="rank">#${result.rank} score ${Number(result.score).toFixed(3)}</div>
       ${result.tagline_ja ? `<div class="tagline">${escapeHtml(result.tagline_ja)}</div>` : ""}
       <div class="title">${escapeHtml(result.title_ja || result.title)}</div>
       ${result.title_ja ? `<div class="title-en">${escapeHtml(result.title)}</div>` : ""}
