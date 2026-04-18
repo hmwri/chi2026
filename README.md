@@ -76,6 +76,15 @@ The script fills `title_ja` and `abstract_ja`, caches translations in
 `data/translations_ja.json`, and avoids retranslating duplicate `content_id`
 entries.
 
+If one translation returns malformed JSON or otherwise fails, the script keeps
+going and records the failed item in:
+
+```text
+data/translation_failures.jsonl
+```
+
+Use `--strict` if you want the script to stop on the first failure.
+
 Useful options:
 
 ```powershell
@@ -83,4 +92,5 @@ uv run python translate_csv.py --dry-run --limit 3
 uv run python translate_csv.py --limit 10 --output chi2026_program_all_tracks_ja_test.csv
 uv run python translate_csv.py --in-place
 uv run python translate_csv.py --concurrency 100
+uv run python translate_csv.py --strict
 ```

@@ -21,6 +21,7 @@ load_dotenv()
 
 DEFAULT_INPUT = Path("chi2026_program_all_tracks.csv")
 DEFAULT_CACHE = Path("data/translations_ja.json")
+DEFAULT_FAILURE_LOG = Path("data/translation_failures.jsonl")
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
 DEFAULT_MODEL = "gemma4-e4b"
 DEFAULT_CONCURRENCY = 100
@@ -43,6 +44,7 @@ def parse_args() -> argparse.Namespace:
         help="Overwrite the input CSV after writing a .bak backup.",
     )
     parser.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
+    parser.add_argument("--failure-log", type=Path, default=DEFAULT_FAILURE_LOG)
     parser.add_argument(
         "--base-url",
         default=os.environ.get("VLLM_BASE_URL", DEFAULT_BASE_URL),
@@ -68,6 +70,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--sleep", type=float, default=0.0)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Stop on the first failed translation instead of continuing.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -117,6 +124,12 @@ def write_cache(path: Path, cache: Dict[str, Dict[str, str]]) -> None:
         json.dumps(cache, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def append_failure(path: Path, record: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 def write_csv(path: Path, fieldnames: List[str], rows: Iterable[Dict[str, str]]) -> None:
@@ -307,9 +320,12 @@ def main() -> int:
         return 1
 
     completed = 0
+    failed = 0
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        futures = [
-            executor.submit(
+        futures = {}
+        for item in work:
+            content_id, title, abstract, hash_value = item
+            future = executor.submit(
                 translate_work_item,
                 item,
                 args.base_url,
@@ -317,15 +333,41 @@ def main() -> int:
                 args.model,
                 args.sleep,
             )
-            for item in work
-        ]
+            futures[future] = {
+                "content_id": content_id,
+                "title_en": title,
+                "abstract_hash": hash_value,
+                "abstract_en_preview": abstract[:500],
+            }
+
         for future in as_completed(futures):
-            content_id, cached = future.result()
-            cache[content_id] = cached
-            completed += 1
-            if completed % 10 == 0:
-                write_cache(args.cache, cache)
-            print(f"Translated {completed}/{len(work)}: {content_id}")
+            context = futures[future]
+            content_id = context["content_id"]
+            try:
+                _content_id, cached = future.result()
+            except Exception as exc:
+                failed += 1
+                failure = {
+                    **context,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                    "model": args.model,
+                    "base_url": args.base_url,
+                    "created_at_unix": int(time.time()),
+                }
+                append_failure(args.failure_log, failure)
+                print(
+                    f"Failed {failed} / pending item {content_id}: {type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
+                if args.strict:
+                    raise
+            else:
+                cache[_content_id] = cached
+                completed += 1
+                if completed % 10 == 0:
+                    write_cache(args.cache, cache)
+                print(f"Translated {completed}/{len(work)}: {_content_id}")
 
     write_cache(args.cache, cache)
     apply_cache_to_rows(rows, cache, args.overwrite)
@@ -337,6 +379,9 @@ def main() -> int:
     write_csv(out_path, fieldnames, rows)
     print(f"Wrote {out_path}")
     print(f"Wrote {args.cache}")
+    if failed:
+        print(f"Failed translations: {failed}")
+        print(f"Wrote {args.failure_log}")
     return 0
 
 
