@@ -191,8 +191,15 @@ def translate_one(
     client = OpenAI(base_url=base_url, api_key=api_key)
     system = (
         "You are a professional academic translator. Translate the provided "
-        "CHI paper title and abstract into natural Japanese. Preserve technical "
-        "terms, acronyms, product names, citations, and numbers. Return only "
+        "CHI paper title and abstract into natural Japanese for Japanese HCI "
+        "researchers. Do not translate word-for-word. Rewrite awkward literal "
+        "phrasing into fluent academic Japanese while preserving the meaning, "
+        "scope, claims, limitations, and nuance of the original. Use terminology "
+        "that would feel natural in Japanese research abstracts. Preserve "
+        "technical terms, acronyms, product names, citations, equations, URLs, "
+        "and numbers when translating them would be harmful. Keep the title "
+        "concise and publication-like. Keep the abstract as one coherent "
+        "Japanese paragraph unless the source requires otherwise. Return only "
         "valid JSON with keys title_ja and abstract_ja."
     )
     user = json.dumps(
